@@ -333,8 +333,6 @@ html { min-height: 100%; }
       <div class="time-sep">–</div>
       <div style="flex:1"><label>Hasta</label><input type="time" id="add-time-end" /></div>
     </div>
-    <div class="add-sep">Categoría (color)</div>
-    <div class="cat-row" id="cat-row"></div>
     <button class="add-confirm" onclick="confirmAddAct()">Añadir al día</button>
     <button class="add-cancel" onclick="closeAddPanel()">Cancelar</button>
   </div>
@@ -643,13 +641,8 @@ function getDayActs(key, type){
     const raw=localStorage.getItem('acts-'+key);
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  // Inicializar desde BLOCKS
-  const blocks=BLOCKS[type]||[];
-  return blocks.map(b=>{
-    const {start,end}=parseTimeRange(b.time);
-    return {icon:b.icon, name:b.name, detail:b.detail||'', bar:b.bar,
-            timeStart:start, timeEnd:end, done:false, fixed:true};
-  });
+  // Día vacío por defecto — el usuario añade sus propias actividades
+  return [];
 }
 function saveDayActs(key, acts){
   if(acts===null){
@@ -687,27 +680,20 @@ function cascadeShift(acts, insertedIdx){
 }
 
 const PRESETS = [
-  {icon:'🛒', name:'Compras',          bar:'b-desc'},
-  {icon:'📚', name:'Máster estética',  bar:'b-master'},
-  {icon:'🤸', name:'Calistenia',       bar:'b-gym'},
-  {icon:'💪', name:'Extra gimnasio',   bar:'b-gym'},
-  {icon:'🧾', name:'Recados',          bar:'b-desc'},
-  {icon:'✈️', name:'Viaje',            bar:'b-opo'},
-  {icon:'🧳', name:'Organizar maleta', bar:'b-desc'},
-  {icon:'🍳', name:'Cocina / tuppers', bar:'b-dieta'},
-  {icon:'👑', name:'Actividad lujo',   bar:'b-clinica'},
+  {icon:'📖', name:'Oposición',           bar:'b-opo'},
+  {icon:'💪', name:'Gimnasio',            bar:'b-gym'},
+  {icon:'🏥', name:'Hospital',            bar:'b-trabajo'},
+  {icon:'🔥', name:'Entrenamiento Hyrox', bar:'b-gym'},
+  {icon:'✈️', name:'Viaje',               bar:'b-master'},
+  {icon:'⚖️', name:'Clase de legislación', bar:'b-opo'},
+  {icon:'🏢', name:'Trabajo clínica',     bar:'b-clinica'},
+  {icon:'🍱', name:'Preparar comidas',    bar:'b-dieta'},
+  {icon:'📚', name:'Estudiar',            bar:'b-opo'},
+  {icon:'✏️', name:'Pasar apuntes',       bar:'b-master'},
 ];
 
-const CATS = [
-  {label:'⚡ URGENTE',  bar:'b-urgente', color:'#F59E0B', urgente:true},
-  {label:'Oposición',  bar:'b-opo',     color:'#7C3AED'},
-  {label:'Gym',        bar:'b-gym',     color:'#EA580C'},
-  {label:'Trabajo',    bar:'b-trabajo', color:'#2563EB'},
-  {label:'Dieta',      bar:'b-dieta',   color:'#0891B2'},
-  {label:'Clínica',    bar:'b-clinica', color:'#059669'},
-  {label:'Máster',     bar:'b-master',  color:'#DB2777'},
-  {label:'General',    bar:'b-desc',    color:'#CBD5E1'},
-];
+// Paleta de rotación para actividades de texto libre (sin preset)
+const FREE_COLORS = ['b-opo','b-gym','b-trabajo','b-master','b-clinica','b-dieta','b-desc'];
 
 let selPreset=null, selCat='b-desc';
 
@@ -791,48 +777,6 @@ function deleteAct(e,i){
   renderChk();
 }
 
-function openAddPanel(){
-  selPreset=null; selCat='b-desc';
-  document.getElementById('add-name-input').value='';
-  document.getElementById('add-time-start').value='';
-  document.getElementById('add-time-end').value='';
-  const pg=document.getElementById('pre-grid'); pg.innerHTML='';
-  PRESETS.forEach((p,i)=>{
-    const b=document.createElement('div');
-    b.className='pre-btn';
-    b.innerHTML=`<span class="pre-icon">${p.icon}</span><span class="pre-name">${p.name}</span>`;
-    b.onclick=()=>{
-      document.querySelectorAll('.pre-btn').forEach(x=>x.classList.remove('sel'));
-      b.classList.add('sel');
-      selPreset=i;
-      document.getElementById('add-name-input').value=p.name;
-      selCat=p.bar;
-      renderCats();
-    };
-    pg.appendChild(b);
-  });
-  renderCats();
-  document.getElementById('add-overlay').classList.add('open');
-}
-
-function renderCats(){
-  const cr=document.getElementById('cat-row'); cr.innerHTML='';
-  CATS.forEach(c=>{
-    const ch=document.createElement('div');
-    ch.className='cat-chip'+(selCat===c.bar?' sel':'');
-    if(selCat===c.bar) ch.style.background=c.color;
-    ch.textContent=c.label;
-    ch.onclick=()=>{selCat=c.bar; renderCats();};
-    cr.appendChild(ch);
-  });
-}
-
-function closeAddPanel(e){
-  if(e&&e.target!==document.getElementById('add-overlay')) return;
-  document.getElementById('add-overlay').classList.remove('open');
-}
-
-
 function getCustom(k){try{return JSON.parse(localStorage.getItem('x-'+k)||'[]')}catch(e){return[]}}
 function setCustom(k,a){try{localStorage.setItem('x-'+k,JSON.stringify(a))}catch(e){}}
 
@@ -854,26 +798,11 @@ function openAddPanel(){
       selPreset=i;
       document.getElementById('add-name-input').value=p.name;
       selCat=p.bar;
-      renderCats();
     };
     pg.appendChild(b);
   });
 
-  // Render cats
-  renderCats();
   document.getElementById('add-overlay').classList.add('open');
-}
-
-function renderCats(){
-  const cr=document.getElementById('cat-row'); cr.innerHTML='';
-  CATS.forEach(c=>{
-    const ch=document.createElement('div');
-    ch.className='cat-chip'+(selCat===c.bar?' sel':'');
-    if(selCat===c.bar) ch.style.background=c.color;
-    ch.textContent=c.label;
-    ch.onclick=()=>{selCat=c.bar; renderCats();};
-    cr.appendChild(ch);
-  });
 }
 
 function closeAddPanel(e){
@@ -887,11 +816,17 @@ function confirmAddAct(){
   const ts=document.getElementById('add-time-start').value;
   const te=document.getElementById('add-time-end').value;
   const p=selPreset!==null?PRESETS[selPreset]:null;
+  // Si no hay preset (texto libre), asignar color rotando la paleta
+  let bar=selCat;
+  if(!p){
+    const acts0=getDayActs(curKey,curType);
+    bar=FREE_COLORS[acts0.length % FREE_COLORS.length];
+  }
   const newAct={
     icon:p?p.icon:'📌',
     name,
     detail:'',
-    bar:selCat,
+    bar:bar,
     timeStart:ts||'',
     timeEnd:te||'',
     done:false,
